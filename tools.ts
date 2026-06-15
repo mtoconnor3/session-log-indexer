@@ -232,7 +232,7 @@ export async function sessionIndex(
   const files = listSessionFiles({ cwdFilter, dateFrom, dateTo, sessionId });
 
   // Filter out already-indexed sessions (unless force)
-  const filesToIndex = files.filter(f => !force && !isSessionIndexed(db, f));
+  const filesToIndex = files.filter(f => force || !isSessionIndexed(db, f));
 
   let totalIndexed = 0;
   let totalSkipped = 0;
@@ -244,6 +244,10 @@ export async function sessionIndex(
     const chunks = extractChunks(records);
 
     if (chunks.length === 0) continue;
+
+    // Get the current max fts_id from the DB for globally unique numbering
+    const maxFtsRow = db.prepare('SELECT COALESCE(MAX(fts_id), -1) as max_fts FROM session_chunks').get();
+    const baseFtsId = (maxFtsRow as { max_fts: number }).max_fts;
 
     // Convert Chunk → ChunkRow for DB
     const rows: ChunkRow[] = chunks.map((c, i) => ({
@@ -257,7 +261,7 @@ export async function sessionIndex(
       chunk_index: c.chunkIndex,
       token_count: c.tokenCount,
       text: c.text,
-      fts_id: i + 1, // Simple sequential fts_id per session
+      fts_id: baseFtsId + i + 1, // Globally sequential fts_id
     }));
 
     const result = await indexSessions(db, rows, DEFAULT_SEARCH_CONFIG, { force: !!force });
