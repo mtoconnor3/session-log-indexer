@@ -266,7 +266,10 @@ export function chunkTurn(
   role: string,
   text: string,
 ): Chunk[] {
-  const parts = splitByTokens(text, CHUNK_TOKEN_LIMIT);
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  const parts = splitByTokens(trimmed, CHUNK_TOKEN_LIMIT);
 
   return parts.map((part, chunkIndex) => ({
     sessionId: metadata.sessionId,
@@ -316,6 +319,14 @@ export function scanErrors(records: SessionRecord[]): SessionError[] {
   const errors: SessionError[] = [];
   const metadata = getSessionMetadata(records);
 
+  // Build a map of toolCallId → toolName from tool_call records
+  const callNames = new Map<string, string>();
+  for (const record of records) {
+    if (record.type === 'tool_call' && record.toolCallId && record.toolName) {
+      callNames.set(String(record.toolCallId), String(record.toolName));
+    }
+  }
+
   for (const record of records) {
     if (record.type !== 'tool_result') continue;
 
@@ -330,12 +341,15 @@ export function scanErrors(records: SessionRecord[]): SessionError[] {
           ? content.text
           : JSON.stringify(content ?? '');
 
+    const toolCallId = record.toolCallId as string || '';
+    const toolName = callNames.get(toolCallId) || 'unknown';
+
     errors.push({
       sessionId: metadata.sessionId,
       timestamp: metadata.timestamp,
       cwd: metadata.cwd,
-      toolName: record.toolName as string || 'unknown',
-      toolCallId: record.toolCallId as string || '',
+      toolName,
+      toolCallId,
       errorMessage: errorMessage.substring(0, 2000),
     });
   }
