@@ -352,7 +352,7 @@ export function searchByEmbedding(
     LIMIT ?
   `;
 
-  const rows = db.prepare(sql).all(embeddingBuffer, maxResults) as Array<{
+  const rows = db.prepare(sql).all([embeddingBuffer, ...whereParams, maxResults]) as Array<{
     id: string;
     session_id: string;
     session_ts: string;
