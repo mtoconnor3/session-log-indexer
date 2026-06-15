@@ -6,6 +6,9 @@
  */
 
 import Database from 'better-sqlite3';
+
+/** Type alias for the database instance. */
+export type SessionDb = Database.Database;
 import path from 'path';
 import fs from 'fs';
 import * as sqliteVec from '@photostructure/sqlite-vec';
@@ -164,7 +167,7 @@ function resolveDbPath(): string {
 /**
  * Open (or create) the SQLite database, initialize schema.
  */
-export function openSessionDb(dbPath?: string): Database.Database {
+export function openSessionDb(dbPath?: string): SessionDb {
   const path = dbPath ?? resolveDbPath();
 
   const db = new Database(path);
@@ -191,7 +194,7 @@ export function openSessionDb(dbPath?: string): Database.Database {
 /**
  * Check if a session is already indexed.
  */
-export function isIndexed(db: Database.Database, sessionId: string): boolean {
+export function isIndexed(db: SessionDb, sessionId: string): boolean {
   const row = db.prepare('SELECT 1 FROM session_chunks WHERE session_id = ? LIMIT 1').get(sessionId) as { id: string } | undefined;
   return row !== undefined;
 }
@@ -199,7 +202,7 @@ export function isIndexed(db: Database.Database, sessionId: string): boolean {
 /**
  * Get list of all indexed sessions with metadata.
  */
-export function getIndexedSessions(db: Database.Database): IndexedSessionInfo[] {
+export function getIndexedSessions(db: SessionDb): IndexedSessionInfo[] {
   const rows = db.prepare(`
     SELECT
       session_id,
@@ -232,7 +235,7 @@ export function getIndexedSessions(db: Database.Database): IndexedSessionInfo[] 
  * Returns the number of rows inserted.
  */
 export function insertChunks(
-  db: Database.Database,
+  db: SessionDb,
   chunks: ChunkRow[],
   vectors: Array<{ chunk_id: string; embedding: number[] }>,
 ): number {
@@ -271,7 +274,7 @@ export function insertChunks(
 /**
  * Delete all chunks for a session.
  */
-export function deleteSessionChunks(db: Database.Database, sessionId: string): number {
+export function deleteSessionChunks(db: SessionDb, sessionId: string): number {
   const deleteChunks = db.prepare('DELETE FROM session_chunks WHERE session_id = ?');
   const deleteVectors = db.prepare('DELETE FROM session_chunk_vectors WHERE chunk_id IN (SELECT id FROM session_chunks WHERE session_id = ?)');
 
@@ -319,7 +322,7 @@ function buildFilterQuery(filters: SearchFilters): { sql: string; params: unknow
  * Vector search using sqlite-vec.
  */
 export function searchByEmbedding(
-  db: Database.Database,
+  db: SessionDb,
   embedding: number[],
   maxResults: number,
   filters: SearchFilters,
@@ -383,7 +386,7 @@ export function searchByEmbedding(
  * FTS5 text search using BM25.
  */
 export function searchByText(
-  db: Database.Database,
+  db: SessionDb,
   query: string,
   maxResults: number,
   filters: SearchFilters,
@@ -446,7 +449,7 @@ export function searchByText(
  * Hybrid search: try vector first, fall back to FTS5.
  */
 export function searchHybrid(
-  db: Database.Database,
+  db: SessionDb,
   embedding: number[] | null,
   query: string,
   maxResults: number,
@@ -471,7 +474,7 @@ export function searchHybrid(
 /**
  * Get aggregate index statistics.
  */
-export function getIndexStats(db: Database.Database): IndexStats {
+export function getIndexStats(db: SessionDb): IndexStats {
   const totalSessions = db.prepare('SELECT COUNT(DISTINCT session_id) as count FROM session_chunks').get() as { count: number };
   const totalChunks = db.prepare('SELECT COUNT(*) as count FROM session_chunks').get() as { count: number };
   const totalTokens = db.prepare('SELECT COALESCE(SUM(token_count), 0) as total FROM session_chunks').get() as { total: number };
@@ -488,7 +491,7 @@ export function getIndexStats(db: Database.Database): IndexStats {
 /**
  * Check if any sessions are indexed at all.
  */
-export function hasIndexedSessions(db: Database.Database): boolean {
+export function hasIndexedSessions(db: SessionDb): boolean {
   const row = db.prepare('SELECT 1 FROM session_chunks LIMIT 1').get() as { id: string } | undefined;
   return row !== undefined;
 }
