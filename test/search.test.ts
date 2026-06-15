@@ -12,7 +12,7 @@ import {
   DEFAULT_SEARCH_CONFIG,
   type SearchConfig,
 } from '../search.ts';
-import type { Database } from 'better-sqlite3';
+import type { SessionDb } from '../db.ts';
 import type { SearchFilters, SearchResult } from '../db.ts';
 
 // ---------------------------------------------------------------------------
@@ -182,7 +182,7 @@ describe('batchGetEmbedding', () => {
 
 describe('searchSessions', () => {
   // Create a mock database with the required methods
-  function createMockDb(): Database.Database {
+  function createMockDb(): SessionDb {
     return {
       exec: vi.fn(),
       prepare: vi.fn(() => ({
@@ -194,7 +194,7 @@ describe('searchSessions', () => {
       close: vi.fn(),
       changeCounter: 0,
       dump: vi.fn(),
-    } as unknown as Database.Database;
+    } as unknown as SessionDb;
   }
 
   const config: SearchConfig = {
