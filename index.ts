@@ -12,7 +12,8 @@
  *   session_list         — Browse sessions with metadata
  *
  * Also registers a session_shutdown hook that auto-indexes the current
- * session when the user quits (Ctrl+D, Ctrl+C, SIGTERM).
+ * session when the user quits (Ctrl+D, Ctrl+C, SIGTERM). Blocks shutdown
+ * until indexing completes to ensure the work actually happens.
  */
 
 import fs from 'fs';
@@ -30,7 +31,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   // Register tools — agent-triggered
   registerTools(db, pi);
 
-  // Auto-index on quit: fire-and-forget, doesn't block shutdown
+  // Auto-index on quit: blocks shutdown until indexing completes
   pi.on('session_shutdown', async (event, ctx) => {
     if (event.reason !== 'quit') return;
 
@@ -38,15 +39,15 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     if (!sessionFile) return;
 
     // Delay to ensure the session file fd is fully flushed / closed
-    setTimeout(() => {
-      void indexSessionOnShutdown(sessionFile);
-    }, 500);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await indexSessionOnShutdown(sessionFile);
   });
 }
 
 /**
- * Index a session file on shutdown.  Fire-and-forget — errors are logged
- * but never thrown so they can't block the shutdown sequence.
+ * Index a session file on shutdown.  Awaited — errors are caught and logged
+ * so they don't crash the shutdown sequence, but indexing completes before
+ * the process exits.
  */
 export async function indexSessionOnShutdown(
   sessionFile: string,
