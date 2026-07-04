@@ -228,8 +228,15 @@ export async function sessionIndex(
   const dateFrom = params.dateFrom as string | undefined;
   const dateTo = params.dateTo as string | undefined;
   const force = params.force as boolean | undefined;
+  const filePath = params.file as string | undefined;
 
-  const files = listSessionFiles({ cwdFilter, dateFrom, dateTo, sessionId });
+  // Resolve files to index: direct file path takes priority, then sessionId, then filters
+  let files: string[];
+  if (filePath) {
+    files = [filePath];
+  } else {
+    files = listSessionFiles({ cwdFilter, dateFrom, dateTo, sessionId });
+  }
 
   // Filter out already-indexed sessions (unless force)
   const filesToIndex = files.filter(f => force || !isSessionIndexed(db, f));
@@ -545,6 +552,7 @@ export function registerTools(db: SessionDb, pi: ExtensionAPI): void {
       type: 'object',
       properties: {
         sessionId: { type: 'string', description: 'Specific session UUID to index.' },
+        file: { type: 'string', description: 'Direct path to a .jsonl session file to index.' },
         cwdFilter: { type: 'string', description: 'Scope to a project directory.' },
         dateFrom: { type: 'string', description: 'Start date (YYYY-MM-DD or ISO format).' },
         dateTo: { type: 'string', description: 'End date (YYYY-MM-DD or ISO format).' },
