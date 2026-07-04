@@ -48,9 +48,12 @@ export default async function (pi: ExtensionAPI): Promise<void> {
  * Index a session file on shutdown.  Fire-and-forget — errors are logged
  * but never thrown so they can't block the shutdown sequence.
  */
-async function indexSessionOnShutdown(sessionFile: string): Promise<void> {
+export async function indexSessionOnShutdown(
+  sessionFile: string,
+  dbPath?: string,
+): Promise<void> {
   try {
-    const db = openSessionDb();
+    const db = openSessionDb(dbPath);
 
     // Read session ID from header
     const firstLine = fs.readFileSync(sessionFile, 'utf-8').split('\n')[0];
@@ -92,17 +95,11 @@ async function indexSessionOnShutdown(sessionFile: string): Promise<void> {
 
     console.log(`[session-log-indexer] Indexing ${rows.length} chunks for session ${sessionId.slice(0, 8)}...`);
 
-    search.indexSessions(db, rows, search.DEFAULT_SEARCH_CONFIG, { force: false })
-      .then((result) => {
-        console.log(
-          `[session-log-indexer] Indexed ${result.indexed} chunks (${result.errors} errors) for session ${sessionId.slice(0, 8)}`,
-        );
-        db.close();
-      })
-      .catch((err: Error) => {
-        console.warn(`[session-log-indexer] Failed to index session: ${err.message}`);
-        db.close();
-      });
+    const result = await search.indexSessions(db, rows, search.DEFAULT_SEARCH_CONFIG, { force: false });
+    console.log(
+      `[session-log-indexer] Indexed ${result.indexed} chunks (${result.errors} errors) for session ${sessionId.slice(0, 8)}`,
+    );
+    db.close();
   } catch (err) {
     console.warn(`[session-log-indexer] Shutdown index error: ${(err as Error).message}`);
   }
