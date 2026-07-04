@@ -48,7 +48,7 @@ All tools accept `cwdFilter`, `dateFrom`, and `dateTo` parameters for scoping re
 | **Embedding** | `nomic-embed-text-v1.5` via LMStudio (`10.1.1.145:1234`) | Lightweight, local model; no external API costs |
 | **Storage** | SQLite with `better-sqlite3` + `@photostructure/sqlite-vec` | Single-file database, no external service, vector search support |
 | **FTS** | FTS5 virtual table with triggers for sync | Built into SQLite, provides fast text search alongside vector search |
-| **Hooks** | `session_shutdown` on quit | Auto-indexes the current session when user exits (Ctrl+D/Ctrl+C/SIGTERM). Fire-and-forget — doesn't block shutdown. Skips if already indexed. |
+| **Hooks** | `session_shutdown` on quit | Auto-indexes the current session when user exits (Ctrl+D/Ctrl+C/SIGTERM). Blocks shutdown until indexing completes (with 500ms flush delay). Skips if already indexed. |
 | **Current session** | Not indexed mid-conversation | Session file is still being written; indexing happens on clean exit via `session_shutdown` hook |
 | **Oversized turns** | Split into sub-chunks (e.g., 21K token turn → ~42 sub-chunks) | Handles large assistant responses gracefully |
 | **Embedding failures** | Graceful degradation to FTS5-only | Session remains searchable via text match even if embedding fails |
